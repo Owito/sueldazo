@@ -371,6 +371,7 @@
         <div class="scale"><span>BAJO UMBRAL</span><span>EN PARÁMETROS</span><span>SOBRE UMBRAL</span></div>
       </div>
       <p style="font-size:.72rem;color:var(--amber-dim)" id="verdict-src">—</p>
+      <p id="mail-status" style="font-size:.72rem;color:var(--amber-dim);margin-top:6px;min-height:1em;letter-spacing:.5px"></p>
       <div class="share-row">
         <a class="share" id="sh-wa" target="_blank" rel="noopener">▸ RETAR A UN COLEGA</a>
         <a class="share" id="sh-x" target="_blank" rel="noopener">▸ COMPARTIR EN X</a>
@@ -579,6 +580,27 @@
       $('sh-x').href=`https://twitter.com/intent/tweet?text=${txt}&url=${encodeURIComponent(url)}`;
 
       $('overlay').classList.add('show');
+      enviarReporte(p, {medUSD, userUSD, pct});
+    }
+
+    // ---- Envío del reporte por correo (Resend, vía /api/reporte) ----
+    async function enviarReporte(p, calc){
+      const el=$('mail-status'); if(!el) return;
+      el.style.color='var(--amber-dim)';
+      el.textContent='◌ TRANSMITIENDO REPORTE A '+p.email+'…';
+      try{
+        const resp=await fetch('/api/reporte',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            email:p.email, rol:p.rol, seniority:p.seniority, pais:p.pais, modalidad:p.modalidad,
+            salarioLocal:p.salario, moneda:p.moneda,
+            medianUSD:calc.medUSD, userUSD:Math.round(calc.userUSD), pct:calc.pct
+          })});
+        const j=await resp.json();
+        if(j.ok){ el.style.color='var(--green)'; el.textContent='✔ REPORTE ENVIADO A '+p.email+'. Revisa tu bandeja (y spam).'; }
+        else if(j.reason==='invalid_email'){ el.style.color='var(--red)'; el.textContent='✕ Correo inválido: no se pudo enviar el reporte.'; }
+        else if(j.reason==='not_configured'){ el.style.color='var(--amber-dim)'; el.textContent='◌ Envío de correo en configuración; tu dato quedó registrado.'; }
+        else { el.style.color='var(--amber-dim)'; el.textContent='◌ No se pudo enviar el reporte ahora; tu dato quedó registrado.'; }
+      }catch(e){ el.style.color='var(--amber-dim)'; el.textContent='◌ No se pudo enviar el reporte ahora; tu dato quedó registrado.'; }
     }
     $('sh-copy').addEventListener('click', async ()=>{
       try{ await navigator.clipboard.writeText(location.href.split('#')[0]); $('sh-copy').textContent='▸ ¡COPIADO!'; }catch(e){}

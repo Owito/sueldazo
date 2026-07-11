@@ -11,6 +11,7 @@ agregados de fuentes públicas 2025/2026), y luego captura tu dato anónimo en *
 - `index.html` — la terminal MAGI (UI + lógica).
 - `data.js` — dataset de referencia salarial citado (medianas por rol×seniority×país, multiplicadores, FX, fuentes).
 - `api/salarios.js` — serverless function (Vercel): señal en vivo con **Adzuna** (media real de vacantes MX/BR).
+- `api/reporte.js` — serverless function (Vercel): envía el "Reporte MAGI" por correo vía **Resend** (plantilla HTML).
 - `config.js` — tus llaves de Supabase.
 - `supabase-schema.sql` — tabla `salarios` + RLS + función de conteo.
 - `textos-difusion.md` — publicación de Platzi + posts de redes.
@@ -26,6 +27,21 @@ vercel --prod --yes
 ```
 Llaves gratis en https://developer.adzuna.com (dashboard → API Access Details).
 Sin llaves, el panel muestra "en espera de configuración" y el resto del sitio funciona igual.
+
+## ✉️ Reporte por correo (Resend) — opcional
+Al transmitir su dato, el usuario recibe el "Reporte MAGI" por correo (plantilla NERV en `api/reporte.js`).
+Variables de entorno en Vercel:
+
+```bash
+echo "re_XXXX" | vercel env add RESEND_API_KEY production
+# opcional: remitente de un dominio verificado en Resend
+echo "SUELDAZO MAGI <reporte@tudominio.com>" | vercel env add RESEND_FROM production
+vercel --prod --yes
+```
+Llave gratis en https://resend.com. **Nota:** sin un dominio verificado, Resend solo entrega al
+correo con el que te registraste (modo prueba); para enviar a cualquier destinatario, verifica un
+dominio en Resend y define `RESEND_FROM`. Sin `RESEND_API_KEY`, el sitio registra el dato igual y
+muestra "envío en configuración".
 
 ---
 
