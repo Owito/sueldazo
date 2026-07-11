@@ -151,6 +151,25 @@
     .node.analyzing .st{color:var(--amber-hi)}
     .node.analyzing b{animation:blink 1s steps(2) infinite}
 
+    /* Señal en vivo (Adzuna) */
+    .live{margin-top:16px}
+    .lv-idle,.lv-note{color:var(--amber-dim);font-size:.82rem;letter-spacing:1px}
+    .lv-grid{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+    @media(max-width:640px){.lv-grid{grid-template-columns:1fr}}
+    .lv-num{font-size:clamp(1.6rem,4.5vw,2.6rem);color:var(--amber-hi);line-height:1;
+      text-shadow:0 0 16px rgba(255,179,0,.35);font-variant-numeric:tabular-nums}
+    .lv-sub{color:var(--amber);opacity:.85;font-size:.85rem;margin-top:4px}
+    .lv-meta{font-size:.7rem;color:var(--amber-dim);margin-top:6px;letter-spacing:1px}
+    .lv-live{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:.72rem;letter-spacing:1px}
+    .lv-live i{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+    @media (prefers-reduced-motion:no-preference){ .lv-live i{animation:blink 1.2s steps(2) infinite} }
+    .hist{display:flex;align-items:flex-end;gap:3px;height:76px}
+    .hist .col{flex:1;min-height:2px;background:linear-gradient(180deg,var(--amber),rgba(255,122,24,.25));
+      border-top:2px solid var(--amber-hi)}
+    .hist-x{display:flex;justify-content:space-between;font-size:.62rem;color:var(--amber-dim);margin-top:4px}
+    .lv-cmp{font-size:.78rem;margin-top:10px;letter-spacing:.5px}
+    .lv-cmp b{color:var(--amber-hi)}
+
     /* Transmitir dato */
     .transmit{margin-top:16px}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -293,6 +312,13 @@
       </div>
     </div>
 
+    <!-- SEÑAL EN VIVO (ADZUNA) -->
+    <div class="panel live" data-tag="SEÑAL EN VIVO · ADZUNA" id="live-panel">
+      <div id="live-body">
+        <div class="lv-idle">◌ En espera de parámetros…</div>
+      </div>
+    </div>
+
     <!-- TRANSMITIR DATO -->
     <div class="panel transmit" data-tag="TRANSMITIR TU DATO A MAGI">
       <p style="font-size:.85rem;opacity:.85;margin-bottom:6px">Usamos el rol, nivel y país seleccionados arriba. Tu dato se guarda de forma <b>anónima</b> y afina el nodo CASPER de la comunidad.</p>
@@ -408,7 +434,58 @@
       $('p25').textContent = 'P25 '+(showLocal?'$'+fmt(r.p25Local)+' '+localCur:'US$'+fmt(r.p25USD));
       $('p75').textContent = 'P75 '+(showLocal?'$'+fmt(r.p75Local)+' '+localCur:'US$'+fmt(r.p75USD));
 
+      // referencia LOCAL para comparar contra la señal en vivo (Adzuna es mercado local)
+      const localRefUSD = window.SUELDAZO_calc(rol,sen,pais,false).medianUSD;
+      updateLive(pais, rol, localRefUSD);
+
       if(animate && !reduce) magiAnalyze();
+    }
+
+    // ---- Señal en vivo (Adzuna, vía /api/salarios) ----
+    let liveSeq = 0;
+    async function updateLive(pais, rol, refUSD){
+      const body = $('live-body');
+      if(pais!=='mexico' && pais!=='brasil'){
+        body.innerHTML = `<div class="lv-note">✕ Sin cobertura en vivo para <b>${D.labels.pais[pais]}</b>. La API de Adzuna cubre <b>México</b> y <b>Brasil</b>; para el resto de LatAm se usa la referencia agregada de los nodos MAGI.</div>`;
+        return;
+      }
+      const seq = ++liveSeq;
+      body.innerHTML = `<div class="lv-idle">◌ SINCRONIZANDO CON ADZUNA…</div>`;
+      try{
+        const resp = await fetch(`/api/salarios?country=${pais}&rol=${rol}`);
+        const j = await resp.json();
+        if(seq!==liveSeq) return; // respuesta obsoleta
+        if(!j.ok){
+          const m = j.reason==='not_configured'
+            ? '◌ Señal en vivo en espera de configuración de la API (ADZUNA_APP_ID / ADZUNA_APP_KEY).'
+            : j.reason==='no_data'
+            ? 'Sin vacantes suficientes en Adzuna para este perfil ahora mismo.'
+            : 'Señal en vivo no disponible por ahora.';
+          body.innerHTML = `<div class="lv-note">${m}</div>`;
+          return;
+        }
+        const cmpPct = Math.round((j.mensualMedianaUSD/refUSD - 1)*100);
+        const cmp = cmpPct===0 ? 'igual a la' : (cmpPct>0 ? `<b>+${cmpPct}%</b> sobre la` : `<b>${cmpPct}%</b> bajo la`);
+        const cols = j.histograma.map(h=>`<div class="col" style="height:${Math.max(2,h.pct)}%" title="~$${fmt(h.mensual)} ${j.moneda}/mes · ${h.n} vacantes"></div>`).join('');
+        const x0=j.histograma[0], x1=j.histograma[j.histograma.length-1];
+        body.innerHTML = `
+          <div class="lv-live"><i></i> EN VIVO · ${D.labels.pais[pais]} · ${D.labels.rol[rol]}</div>
+          <div class="lv-grid" style="margin-top:10px">
+            <div>
+              <div class="lv-num">$${fmt(j.mensualMedianaLocal)} ${j.moneda}</div>
+              <div class="lv-sub">≈ US$ ${fmt(j.mensualMedianaUSD)} / mes · mediana de mercado</div>
+              <div class="lv-meta">Según ${fmt(j.vacantes)} vacantes publicadas · ${j.fuente}</div>
+              <div class="lv-cmp">Señal en vivo ${cmp} referencia MAGI (US$ ${fmt(refUSD)}).</div>
+            </div>
+            <div>
+              <div class="hist">${cols}</div>
+              <div class="hist-x"><span>~$${fmt(x0.mensual)}</span><span>distribución mensual (${j.moneda})</span><span>~$${fmt(x1.mensual)}</span></div>
+            </div>
+          </div>`;
+      }catch(e){
+        if(seq!==liveSeq) return;
+        body.innerHTML = `<div class="lv-note">Señal en vivo no disponible (endpoint /api no accesible en este entorno).</div>`;
+      }
     }
     function magiAnalyze(){
       [0,1,2].forEach(i=>{
