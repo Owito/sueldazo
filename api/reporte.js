@@ -33,7 +33,7 @@ function plantillaMAGI(d) {
   const AMBER = "#FF7A18", AMBER_HI = "#FFB300", DIM = "#8a4d16", BG = "#050503", PANEL = "#0a0a07";
   const mono = "'Courier New', Consolas, monospace";
   const hazard = `background-image:repeating-linear-gradient(-45deg,${p.color} 0 10px,#0a0a07 10px 20px);height:10px;line-height:10px;font-size:0;`;
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#000;">
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#000;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#000;padding:24px 0;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:${BG};border:1px solid rgba(255,122,24,.35);font-family:${mono};color:${AMBER};">
