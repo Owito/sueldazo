@@ -10,9 +10,22 @@ agregados de fuentes públicas 2025/2026), y luego captura tu dato anónimo en *
 **Archivos:**
 - `index.html` — la terminal MAGI (UI + lógica).
 - `data.js` — dataset de referencia salarial citado (medianas por rol×seniority×país, multiplicadores, FX, fuentes).
+- `api/salarios.js` — serverless function (Vercel): señal en vivo con **Adzuna** (media real de vacantes MX/BR).
 - `config.js` — tus llaves de Supabase.
 - `supabase-schema.sql` — tabla `salarios` + RLS + función de conteo.
 - `textos-difusion.md` — publicación de Platzi + posts de redes.
+
+## 🔌 Señal en vivo (Adzuna) — opcional
+El panel "SEÑAL EN VIVO · ADZUNA" muestra la media real de vacantes con salario publicado
+(cobertura LatAm de Adzuna: **México y Brasil**). Requiere variables de entorno en Vercel:
+
+```bash
+echo "TU_APP_ID"  | vercel env add ADZUNA_APP_ID  production
+echo "TU_APP_KEY" | vercel env add ADZUNA_APP_KEY production
+vercel --prod --yes
+```
+Llaves gratis en https://developer.adzuna.com (dashboard → API Access Details).
+Sin llaves, el panel muestra "en espera de configuración" y el resto del sitio funciona igual.
 
 ---
 
