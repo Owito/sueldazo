@@ -1,62 +1,53 @@
 // ============================================================
 //  Sueldazo · API en vivo (Vercel Serverless Function)
-//  Proxy a Adzuna: histograma de salarios REALES de vacantes publicadas.
+//  Proxy a Adzuna: media salarial REAL de vacantes publicadas.
 //  Cobertura LatAm de Adzuna: México (mx) y Brasil (br).
 //
 //  Requiere variables de entorno en Vercel:
 //    ADZUNA_APP_ID   · ADZUNA_APP_KEY   (gratis en developer.adzuna.com)
 //
 //  GET /api/salarios?country=mexico&rol=backend
-//  → { ok, pais, moneda, mensualMedianaLocal, mensualMedianaUSD, vacantes, histograma[], fuente }
+//  → { ok, pais, moneda, mensualMediaLocal, mensualMediaUSD, vacantes, histograma[], fuente }
 // ============================================================
 
-// País (interno) → código Adzuna
 const ADZUNA_COUNTRY = { mexico: "mx", brasil: "br" };
 
-// Rol (interno) → término de búsqueda ("what") en Adzuna
+// Rol (interno) → término de búsqueda ("what") en Adzuna.
+// Palabras clave cortas: los títulos multi-palabra en inglés casi no existen
+// en las vacantes de MX/BR y devuelven muestras diminutas.
 const ROLE_WHAT = {
-  frontend: "frontend developer",
-  backend: "backend developer",
-  fullstack: "full stack developer",
-  devops: "devops engineer",
+  frontend: "frontend",
+  backend: "backend",
+  fullstack: "full stack",
+  devops: "devops",
   data: "data engineer",
-  ai: "machine learning engineer",
-  mobile: "mobile developer",
-  qa: "qa engineer",
+  ai: "machine learning",
+  mobile: "mobile",
+  qa: "qa",
   pm: "product manager",
-  design: "ux designer",
-  otro: "software developer",
+  design: "designer",
+  otro: "developer",
 };
 
-// Moneda local por código de país Adzuna + FX aprox (1 USD = X)
 const CURRENCY = { mx: "MXN", br: "BRL" };
 const FX = { MXN: 18, BRL: 5.4 };
 
-// Mediana ponderada a partir del histograma de Adzuna.
-// keys = borde inferior de la banda (salario anual local); values = nº de vacantes.
-function medianaDesdeHistograma(hist) {
-  const bandas = Object.keys(hist)
-    .map((k) => ({ salario: Number(k), n: Number(hist[k]) }))
-    .filter((b) => Number.isFinite(b.salario) && b.n > 0)
-    .sort((a, b) => a.salario - b.salario);
-  if (!bandas.length) return null;
+// Umbrales de fiabilidad
+const MIN_VACANTES = 40;
+const MIN_USD_MES = 300;
+const MAX_USD_MES = 25000;
 
-  const ancho =
-    bandas.length > 1 ? bandas[1].salario - bandas[0].salario : bandas[0].salario;
-  // usar el punto medio de cada banda como valor representativo
-  bandas.forEach((b) => (b.rep = b.salario + ancho / 2));
-
-  const total = bandas.reduce((s, b) => s + b.n, 0);
-  let acum = 0;
-  for (const b of bandas) {
-    acum += b.n;
-    if (acum >= total / 2) return { mediana: b.rep, total, bandas };
-  }
-  return { mediana: bandas[bandas.length - 1].rep, total, bandas };
-}
+const adzunaUrl = (path, cc, params) =>
+  `https://api.adzuna.com/v1/api/jobs/${cc}/${path}?` +
+  new URLSearchParams({
+    app_id: process.env.ADZUNA_APP_ID,
+    app_key: process.env.ADZUNA_APP_KEY,
+    "content-type": "application/json",
+    ...params,
+  });
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
+  res.setHeader("Cache-Control", "s-maxage=21600, stale-while-revalidate=86400");
 
   const { country = "mexico", rol = "backend" } = req.query || {};
   const cc = ADZUNA_COUNTRY[country];
@@ -68,10 +59,7 @@ module.exports = async function handler(req, res) {
       mensaje: "Adzuna solo cubre México y Brasil en LatAm.",
     });
   }
-
-  const appId = process.env.ADZUNA_APP_ID;
-  const appKey = process.env.ADZUNA_APP_KEY;
-  if (!appId || !appKey) {
+  if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_APP_KEY) {
     return res.status(200).json({
       ok: false,
       reason: "not_configured",
@@ -80,40 +68,55 @@ module.exports = async function handler(req, res) {
   }
 
   const what = ROLE_WHAT[rol] || ROLE_WHAT.otro;
-  const url =
-    `https://api.adzuna.com/v1/api/jobs/${cc}/histogram` +
-    `?app_id=${encodeURIComponent(appId)}` +
-    `&app_key=${encodeURIComponent(appKey)}` +
-    `&what=${encodeURIComponent(what)}` +
-    `&content-type=application/json`;
+  const moneda = CURRENCY[cc];
+  const fx = FX[moneda] || 1;
 
   try {
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!r.ok) {
-      return res
-        .status(200)
-        .json({ ok: false, reason: "adzuna_error", status: r.status });
+    // 1) Búsqueda → count + mean (salario anual local): la media más fiable
+    const sr = await fetch(
+      adzunaUrl("search/1", cc, { what, results_per_page: "1" }),
+      { headers: { Accept: "application/json" } }
+    );
+    if (!sr.ok) {
+      return res.status(200).json({ ok: false, reason: "adzuna_error", status: sr.status });
     }
-    const json = await r.json();
-    const hist = json && json.histogram;
-    if (!hist || !Object.keys(hist).length) {
-      return res.status(200).json({ ok: false, reason: "no_data" });
+    const s = await sr.json();
+    const count = Number(s.count) || 0;
+    const meanAnual = Number(s.mean) || 0;
+    const mensualLocal = Math.round(meanAnual / 12);
+    const mensualUSD = Math.round(mensualLocal / fx);
+
+    // Guardas de calidad: muestra suficiente y valor plausible
+    if (count < MIN_VACANTES || mensualUSD < MIN_USD_MES || mensualUSD > MAX_USD_MES) {
+      return res.status(200).json({
+        ok: false,
+        reason: "low_sample",
+        vacantes: count,
+        mensaje: "Muestra insuficiente o no fiable en Adzuna para este perfil.",
+      });
     }
 
-    const m = medianaDesdeHistograma(hist);
-    if (!m) return res.status(200).json({ ok: false, reason: "no_data" });
-
-    const moneda = CURRENCY[cc];
-    const mensualLocal = Math.round(m.mediana / 12);
-    const mensualUSD = Math.round(mensualLocal / (FX[moneda] || 1));
-
-    // histograma normalizado (mensual local) para graficar
-    const maxN = Math.max(...m.bandas.map((b) => b.n));
-    const histograma = m.bandas.map((b) => ({
-      mensual: Math.round(b.rep / 12),
-      n: b.n,
-      pct: Math.round((b.n / maxN) * 100),
-    }));
+    // 2) Histograma (distribución real) para graficar. Best-effort.
+    let histograma = [];
+    try {
+      const hr = await fetch(adzunaUrl("histogram", cc, { what }), {
+        headers: { Accept: "application/json" },
+      });
+      if (hr.ok) {
+        const h = await hr.json();
+        const hist = (h && h.histogram) || {};
+        const bandas = Object.keys(hist)
+          .map((k) => ({ anual: Number(k), n: Number(hist[k]) }))
+          .filter((b) => Number.isFinite(b.anual) && b.n > 0)
+          .sort((a, b) => a.anual - b.anual);
+        const maxN = Math.max(1, ...bandas.map((b) => b.n));
+        histograma = bandas.map((b) => ({
+          mensual: Math.round(b.anual / 12),
+          n: b.n,
+          pct: Math.round((b.n / maxN) * 100),
+        }));
+      }
+    } catch (_) {}
 
     return res.status(200).json({
       ok: true,
@@ -121,15 +124,13 @@ module.exports = async function handler(req, res) {
       rol,
       what,
       moneda,
-      mensualMedianaLocal: mensualLocal,
-      mensualMedianaUSD: mensualUSD,
-      vacantes: m.total,
+      mensualMediaLocal: mensualLocal,
+      mensualMediaUSD: mensualUSD,
+      vacantes: count,
       histograma,
-      fuente: "Adzuna · empleos publicados (histograma de salarios)",
+      fuente: "Adzuna · media de vacantes con salario publicado (todos los niveles)",
     });
   } catch (e) {
-    return res
-      .status(200)
-      .json({ ok: false, reason: "fetch_failed", mensaje: String(e) });
+    return res.status(200).json({ ok: false, reason: "fetch_failed", mensaje: String(e) });
   }
-}
+};

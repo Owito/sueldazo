@@ -458,29 +458,28 @@
         if(!j.ok){
           const m = j.reason==='not_configured'
             ? '◌ Señal en vivo en espera de configuración de la API (ADZUNA_APP_ID / ADZUNA_APP_KEY).'
-            : j.reason==='no_data'
-            ? 'Sin vacantes suficientes en Adzuna para este perfil ahora mismo.'
+            : j.reason==='low_sample'
+            ? `Muestra insuficiente en Adzuna para <b>${D.labels.rol[rol]}</b> en <b>${D.labels.pais[pais]}</b> ahora mismo${j.vacantes!=null?` (${fmt(j.vacantes)} vacantes)`:''}. Se mantiene la referencia agregada de arriba.`
             : 'Señal en vivo no disponible por ahora.';
           body.innerHTML = `<div class="lv-note">${m}</div>`;
           return;
         }
-        const cmpPct = Math.round((j.mensualMedianaUSD/refUSD - 1)*100);
-        const cmp = cmpPct===0 ? 'igual a la' : (cmpPct>0 ? `<b>+${cmpPct}%</b> sobre la` : `<b>${cmpPct}%</b> bajo la`);
-        const cols = j.histograma.map(h=>`<div class="col" style="height:${Math.max(2,h.pct)}%" title="~$${fmt(h.mensual)} ${j.moneda}/mes · ${h.n} vacantes"></div>`).join('');
-        const x0=j.histograma[0], x1=j.histograma[j.histograma.length-1];
+        const hist = j.histograma||[];
+        const histBlock = hist.length ? `
+            <div>
+              <div class="hist">${hist.map(h=>`<div class="col" style="height:${Math.max(2,h.pct)}%" title="~$${fmt(h.mensual)} ${j.moneda}/mes · ${h.n} vacantes"></div>`).join('')}</div>
+              <div class="hist-x"><span>~$${fmt(hist[0].mensual)}</span><span>distribución mensual (${j.moneda})</span><span>~$${fmt(hist[hist.length-1].mensual)}</span></div>
+            </div>` : `<div class="lv-note">Distribución no disponible.</div>`;
         body.innerHTML = `
           <div class="lv-live"><i></i> EN VIVO · ${D.labels.pais[pais]} · ${D.labels.rol[rol]}</div>
           <div class="lv-grid" style="margin-top:10px">
             <div>
-              <div class="lv-num">$${fmt(j.mensualMedianaLocal)} ${j.moneda}</div>
-              <div class="lv-sub">≈ US$ ${fmt(j.mensualMedianaUSD)} / mes · mediana de mercado</div>
-              <div class="lv-meta">Según ${fmt(j.vacantes)} vacantes publicadas · ${j.fuente}</div>
-              <div class="lv-cmp">Señal en vivo ${cmp} referencia MAGI (US$ ${fmt(refUSD)}).</div>
+              <div class="lv-num">$${fmt(j.mensualMediaLocal)} ${j.moneda}</div>
+              <div class="lv-sub">≈ US$ ${fmt(j.mensualMediaUSD)} / mes · media de mercado</div>
+              <div class="lv-meta">Según ${fmt(j.vacantes)} vacantes con salario publicado · Adzuna</div>
+              <div class="lv-cmp mono-dim">Media de <b>todos los niveles</b>; la referencia MAGI de arriba es por seniority.</div>
             </div>
-            <div>
-              <div class="hist">${cols}</div>
-              <div class="hist-x"><span>~$${fmt(x0.mensual)}</span><span>distribución mensual (${j.moneda})</span><span>~$${fmt(x1.mensual)}</span></div>
-            </div>
+            ${histBlock}
           </div>`;
       }catch(e){
         if(seq!==liveSeq) return;
