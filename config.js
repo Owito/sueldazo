@@ -6,6 +6,6 @@
 //  para un formulario de captura como este.
 // ============================================================
 window.SUELDAZO_CONFIG = {
-  url: "https://TU-PROYECTO.supabase.co",   // ← pega tu Project URL
-  anonKey: "TU-ANON-KEY"                      // ← pega tu anon/public key
+  url: "https://tzogwtofywhtjdytdbki.supabase.co",
+  anonKey: "sb_publishable_P7SsOW0ctnT6rusJYADyUQ_bkuFSouz"  // publishable key (segura con RLS)
 };
