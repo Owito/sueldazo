@@ -1,7 +1,8 @@
 # 📣 Textos de difusión — SUELDAZO // MAGI (Proyecto 2)
 
-> Reemplaza `LINK_PUBLICO` por la URL de Vercel/Netlify tras desplegar,
-> y `LINK_CLASE_PLATZI` por la URL de la clase del Proyecto 2 donde publicaste.
+> ✅ Sitio en vivo: https://sueldazo-kappa.vercel.app
+> ✅ Clase del Proyecto 2 (donde publicas): https://platzi.com/cursos/vibecoders-league-1782929927/proyecto-2-julio-11/
+> Tip: tras publicar tu comentario, si puedes copia el enlace directo a TU comentario y úsalo como link de voto.
 
 ---
 
@@ -17,7 +18,7 @@
 
 **Stack:** HTML + CSS (terminal NERV con clip-path, scanlines CRT, respeta `prefers-reduced-motion`) + JS vanilla + Supabase. 100% vibe coding.
 
-🔗 **Pruébalo (sin cuenta):** LINK_PUBLICO
+🔗 **Pruébalo (sin cuenta):** https://sueldazo-kappa.vercel.app
 
 Consulta tu rol, transmite tu dato y mira tu patrón. Si te gustó, déjame tu 👍 aquí 🙏 ¡Toda retro es bienvenida!
 
@@ -31,10 +32,10 @@ Hablar de sueldos en LatAm sigue siendo tabú… y ese silencio es justo lo que 
 
 Para la **Vibe Coders League** de Platzi construí **SUELDAZO // MAGI**: una terminal con estética de *Neon Genesis Evangelion* donde ves **al instante la mediana real del mercado** para tu rol, seniority y país (datos agregados de fuentes públicas), y luego transmites tu dato anónimo para descubrir tu "patrón". Persistencia real en Supabase, no una web de adorno.
 
-👉 Pruébalo (sin cuenta): LINK_PUBLICO
+👉 Pruébalo (sin cuenta): https://sueldazo-kappa.vercel.app
 
 Y si te sirve, me ayudas MUCHÍSIMO con un 👍 en mi entrega en Platzi 🙏:
-LINK_CLASE_PLATZI
+https://platzi.com/cursos/vibecoders-league-1782929927/proyecto-2-julio-11/
 
 #VibeCoding #Platzi #DesarrolloDeSoftware #LatAm #Supabase #Evangelion
 
@@ -48,7 +49,7 @@ una terminal estilo NERV/Evangelion que te muestra al instante la mediana real d
 
 datos de fuentes públicas + Supabase.
 
-pruébalo 👉 LINK_PUBLICO
+pruébalo 👉 https://sueldazo-kappa.vercel.app
 (déjame tu 👍 en Platzi 🙏)
 
 ---
@@ -57,8 +58,8 @@ pruébalo 👉 LINK_PUBLICO
 
 ¡Hola! 👋 Armé *SUELDAZO // MAGI* 🔶, una terminal estilo Evangelion para saber si en tech nos pagan lo justo en LatAm.
 Eliges tu rol/país y ves al toque la mediana real del mercado; luego metes tu dato anónimo y te dice tu "patrón".
-Pruébalo (sin cuenta): LINK_PUBLICO
-Y si te gusta, me ayudas un montón con un 👍 acá: LINK_CLASE_PLATZI 🙏
+Pruébalo (sin cuenta): https://sueldazo-kappa.vercel.app
+Y si te gusta, me ayudas un montón con un 👍 acá: https://platzi.com/cursos/vibecoders-league-1782929927/proyecto-2-julio-11/ 🙏
 
 ---
 
